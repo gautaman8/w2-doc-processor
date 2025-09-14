@@ -1,0 +1,7 @@
+# Django Backend
+Django==5.2.6
+djangorestframework==3.16.1
+
+# Streamlit Frontend
+streamlit==1.28.1
+requests==2.31.0
