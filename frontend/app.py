@@ -19,23 +19,26 @@ if st.button("Upload Document"):
             st.info("Please upload your file using the signed URL")
             
             # File uploader
-            uploaded_file = st.file_uploader("Choose a file", type=['pdf', 'doc', 'docx', 'txt'])
+            uploaded_file = st.file_uploader("Choose a file", type=['pdf'])
             
             if uploaded_file is not None:
-                # Upload file to signed URL
-                files = {'file': uploaded_file.getvalue()}
-                upload_response = requests.put(signed_url, files=files)
+                # Upload file to signed URL - send as binary data like curl
+                file_data = uploaded_file.getvalue()
+                upload_response = requests.put(signed_url, data=file_data)
                 
-                if upload_response.status_code == 200:
+                print(f"Signed URL: {signed_url}")
+                print(f"File data: {file_data}")
+                print("Request.data: ", upload_response.request.body)
+                if upload_response.status_code in [200, 201, 204]:
                     st.success("File uploaded successfully!")
                     
                     # Show job status
-                    status_response = requests.get(f"http://localhost:8000/jobs/{job_id}/")
-                    if status_response.status_code == 200:
-                        job_data = status_response.json()
-                        st.info(f"Job Status: {job_data.get('status')}")
+                    # status_response = requests.get(f"http://localhost:8000/jobs/{job_id}/")
+                    # if status_response.status_code in [200, 201, 204]:
+                    #     job_data = status_response.json()
+                    #     st.info(f"Job Status: {job_data.get('status')}")
                 else:
-                    st.error("Failed to upload file")
+                    st.error(f"Failed to upload file: {upload_response.text}")
         else:
             st.error(f"API Error: {response.status_code}")
             if response.text:
