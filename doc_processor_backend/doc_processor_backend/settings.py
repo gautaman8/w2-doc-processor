@@ -83,3 +83,30 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
 }
+
+# AWS LocalStack Configuration
+AWS_ACCESS_KEY_ID = 'test'
+AWS_SECRET_ACCESS_KEY = 'test'
+AWS_S3_REGION_NAME = 'us-east-1'
+AWS_S3_ENDPOINT_URL = 'http://localhost:4566'  # LocalStack
+AWS_STORAGE_BUCKET_NAME = 'w2'
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'shared_services': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}
+
+# Fix bucket name - S3 requires at least 3 characters
+AWS_STORAGE_BUCKET_NAME = 'w2-bucket'
