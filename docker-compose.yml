@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: doc-processor-localstack
+    ports:
+      - "4566:4566"                    # LocalStack main port
+      - "4510-4559:4510-4559"         # External services port range
+    environment:
+      - SERVICES=s3                    # Only S3 service
+      - DEBUG=1                        # Enable debug mode
+      - DATA_DIR=/tmp/localstack/data  # Persist data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/tmp/localstack:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
