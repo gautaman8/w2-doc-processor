@@ -19,7 +19,7 @@ if uploaded_file is not None:
     if st.button("Upload Document"):
         try:
             # Call API endpoint - POST /jobs/
-            response = requests.post("http://localhost:8000/jobs/")
+            response = requests.post("http://backend:8000/jobs/")
             
             if response.status_code == 201:
                 data = response.json()
@@ -27,10 +27,14 @@ if uploaded_file is not None:
                 signed_url = data.get("signed_url")
                 
                 st.success(f"Job ID: {job_id}")
-                st.info("Uploading file to S3...")
+                st.info("Please upload your file using the signed URL")
                 
                 # Upload file to signed URL - send as binary data
                 file_data = uploaded_file.getvalue()
+                
+                st.write("�� Uploading file to S3...")
+                
+                # Upload file to signed URL - send as binary data
                 upload_response = requests.put(signed_url, data=file_data)
                 
                 # Display results
@@ -56,7 +60,7 @@ if uploaded_file is not None:
                     st.error(f"Error details: {response.text}")
                 
         except requests.exceptions.ConnectionError:
-            st.error("Could not connect to local server. Make sure it's running on localhost:8000")
+            st.error("Could not connect to backend server. Make sure it's running.")
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
@@ -69,7 +73,7 @@ with st.sidebar:
     job_id_input = st.text_input("Enter Job ID:", key="job_id_input")
     if st.button("Check Status", key="check_status_btn") and job_id_input:
         try:
-            status_response = requests.get(f"http://localhost:8000/jobs/{job_id_input}/")
+            status_response = requests.get(f"http://backend:8000/jobs/{job_id_input}/")
             if status_response.status_code == 200:
                 job_data = status_response.json()
                 st.success("Job found!")
@@ -83,7 +87,7 @@ with st.sidebar:
     st.subheader("S3 Bucket Info")
     if st.button("Get Bucket Info", key="bucket_info_btn"):
         try:
-            bucket_response = requests.get("http://localhost:8000/jobs/bucket_info/")
+            bucket_response = requests.get("http://backend:8000/jobs/bucket_info/")
             if bucket_response.status_code == 200:
                 bucket_data = bucket_response.json()
                 st.success("Bucket info retrieved!")
