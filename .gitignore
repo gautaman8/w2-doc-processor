@@ -2,3 +2,5 @@
 .env
 *env*
 __pycache__/
+/sample_files/
+.DS_Store

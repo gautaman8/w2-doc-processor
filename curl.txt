@@ -1,0 +1,14 @@
+1) Create jobs
+
+curl -X POST http://localhost:8000/jobs/
+
+
+2) Upload files
+
+# This uploads the actual file content
+curl -X PUT "http://localhost:4566/w2-bucket/uploads/1757942906_c2452f61/w2.pdf?AWSAccessKeyId=test&Signature=OyEvNgfblDcBVzKYDNKT%2FCSnEao%3D&Expires=1757946506" --data-binary @/Users/gautamansarangan/Downloads/w2_form.pdf
+
+3) Verify if file is uploaded to local S3
+
+curl "http://localhost:4566/w2-bucket/uploads/1757956085_50e7f497/w2.pdf" --output sample_files/w2.pdf
+
