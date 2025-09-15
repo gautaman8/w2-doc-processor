@@ -13,7 +13,7 @@ SECRET_KEY = 'django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend', '0.0.0.0']
 
 # Application definition
 INSTALLED_APPS = [
@@ -88,8 +88,8 @@ REST_FRAMEWORK = {
 AWS_ACCESS_KEY_ID = 'test'
 AWS_SECRET_ACCESS_KEY = 'test'
 AWS_S3_REGION_NAME = 'us-east-1'
-AWS_S3_ENDPOINT_URL = 'http://localhost:4566'  # LocalStack
-AWS_STORAGE_BUCKET_NAME = 'w2'
+AWS_S3_ENDPOINT_URL = 'http://localstack:4566'  # LocalStack
+AWS_STORAGE_BUCKET_NAME = 'w2-bucket'
 
 # Logging configuration
 LOGGING = {
@@ -108,5 +108,3 @@ LOGGING = {
     },
 }
 
-# Fix bucket name - S3 requires at least 3 characters
-AWS_STORAGE_BUCKET_NAME = 'w2-bucket'
