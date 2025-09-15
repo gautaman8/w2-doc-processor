@@ -4,10 +4,16 @@ services:
     image: localstack/localstack:latest
     container_name: doc-processor-localstack
     ports:
-      - "4566:4566"
+      - "4566:4566" # s3
+      - "4510-4559:4510-4559" # lambda execution ports
     environment:
-      - SERVICES=s3
+      - SERVICES=s3,sqs,lambda, sns
       - DEBUG=1
+      - LAMBDA_EXECUTOR=docker
+    
+    volumes:
+      # - ./sample_files:/tmp/localstack/data (Localstack temp files)
+      - "/var/run/docker.sock:/var/run/docker.sock"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 30s
