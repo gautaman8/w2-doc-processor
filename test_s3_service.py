@@ -4,7 +4,7 @@ import sys
 import django
 
 # Add the project root to Python path
-sys.path.append('/Users/gautamansarangan/doc-processor')
+sys.path.append('/Users/gautamansarangan/doc-processor/doc_processor_backend')
 
 # Setup Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'doc_processor_backend.settings')

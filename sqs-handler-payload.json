@@ -1,0 +1,1 @@
+{"Records":[{"body":"{\"Records\":[{\"eventName\":\"s3:ObjectCreated:Put\",\"s3\":{\"bucket\":{\"name\":\"w2-bucket\"},\"object\":{\"key\":\"uploads/test-789/w2.pdf\"}},\"eventTime\":\"2024-01-01T00:00:00.000Z\"}]}"}]}
