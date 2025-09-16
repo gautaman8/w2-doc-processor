@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: doc-processor-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,sqs,lambda
+      - DEBUG=1
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - doc-processor-network
+
+  backend:
+    build:
+      context: ./doc_processor_backend
+      dockerfile: Dockerfile
+    container_name: doc-processor-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./doc_processor_backend:/app
+    depends_on:
+      localstack:
+        condition: service_healthy
+    networks:
+      - doc-processor-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: doc-processor-frontend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+    networks:
+      - doc-processor-network
+
+networks:
+  doc-processor-network:
+    driver: bridge

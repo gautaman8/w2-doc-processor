@@ -1,0 +1,1 @@
+{"statusCode": 200, "body": "{\"message\": \"File processed successfully\", \"job_id\": \"demo-job-002\", \"folder_path\": \"uploads/demo-job-002/\", \"filename\": \"w2.pdf\"}"}

@@ -7,7 +7,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=s3
+      - SERVICES=s3,sqs,lambda
       - DEBUG=1
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
@@ -16,6 +16,62 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - doc-processor-network
+
+  # SQS Queue and Lambda setup service
+  aws-setup:
+    image: amazon/aws-cli:latest
+    container_name: doc-processor-aws-setup
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    command: >
+      sh -c "
+        echo 'Waiting for LocalStack to be ready...' &&
+        sleep 10 &&
+        echo 'Creating SQS queue...' &&
+        aws --endpoint-url=http://localstack:4566 sqs create-queue --queue-name w2-file-events-queue &&
+        echo 'SQS queue created successfully' &&
+        tail -f /dev/null
+      "
+    networks:
+      - doc-processor-network
+
+  # SQS Handler Lambda Function
+  sqs-handler:
+    build:
+      context: ./lambda_functions/sqs_handler
+      dockerfile: Dockerfile
+    container_name: doc-processor-sqs-handler
+    depends_on:
+      - aws-setup
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    networks:
+      - doc-processor-network
+
+  # Core Processor Lambda Function
+  core-processor:
+    build:
+      context: ./lambda_functions/core_processor
+      dockerfile: Dockerfile
+    container_name: doc-processor-core-processor
+    depends_on:
+      - aws-setup
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
     networks:
       - doc-processor-network
 
