@@ -7,7 +7,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=s3,sqs,lambda
+      - SERVICES=s3,sqs,lambda,secretsmanager
       - DEBUG=1
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
@@ -67,6 +67,22 @@ services:
             ]
           }' &&
         echo 'S3 events configured' &&
+        echo 'Initializing AWS Secrets Manager...' &&
+        API_KEY=\$$(openssl rand -hex 32) &&
+        echo 'Generated API Key: \$${API_KEY:0:8}...' &&
+        aws --endpoint-url=http://localstack:4566 \
+            --region=us-east-1 \
+            secretsmanager create-secret \
+            --name 'external-api-key' \
+            --description 'API key for external services' \
+            --secret-string \"{\\\"api_key\\\": \\\"\$$API_KEY\\\", \\\"created_at\\\": \\\"\$$(date -u +%Y-%m-%dT%H:%M:%SZ)\\\"}\" &&
+        echo 'Secret created successfully' &&
+        echo 'Verifying secret...' &&
+        aws --endpoint-url=http://localstack:4566 \
+            --region=us-east-1 \
+            secretsmanager describe-secret \
+            --secret-id 'external-api-key' &&
+        echo 'AWS setup complete!' &&
         tail -f /dev/null
       "
     networks:
