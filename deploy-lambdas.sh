@@ -20,8 +20,9 @@ rm -rf requests* urllib3* certifi* charset_normalizer* idna* python_dateutil* si
 # Install only what we need to a temp directory
 pip install -r requirements.txt -t temp_packages --quiet
 
-# Copy handler.py to temp directory
+# Copy handler.py and w2_extractor.py to temp directory
 cp handler.py temp_packages/
+cp w2_extractor.py temp_packages/
 
 # Create clean zip with only essential files (excluding all junk)
 cd temp_packages
@@ -68,8 +69,9 @@ rm -rf requests* urllib3* certifi* charset_normalizer* idna* python_dateutil* si
 # Install only what we need to a temp directory
 pip install -r requirements.txt -t temp_packages --quiet
 
-# Copy handler.py to temp directory
+# Copy handler.py and w2_extractor.py to temp directory
 cp handler.py temp_packages/
+cp w2_extractor.py temp_packages/
 
 # Create clean zip with only essential files (excluding all junk)
 cd temp_packages
@@ -99,7 +101,7 @@ find . -name "contrib" -type d -exec rm -rf {} + 2>/dev/null || true
 # Keep http2 directory as urllib3 needs it
 # find . -name "http2" -type d -exec rm -rf {} + 2>/dev/null || true
 find . -name "emscripten" -type d -exec rm -rf {} + 2>/dev/null || true
-zip -r ../core-processor.zip handler.py requests/ urllib3/ certifi/ charset_normalizer/ idna/ six.py
+zip -r ../core-processor.zip handler.py w2_extractor.py requests/ urllib3/ certifi/ charset_normalizer/ idna/ six.py
 cd ..
 
 # Clean up temp directory

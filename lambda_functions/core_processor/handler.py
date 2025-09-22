@@ -3,6 +3,7 @@ import logging
 import os
 import requests
 from urllib.parse import unquote_plus
+from w2_extractor import extract_w2_data, validate_w2_data
 
 # Configure logging
 logger = logging.getLogger()
@@ -19,13 +20,41 @@ def extract_job_id(object_key):
     else:
         return "unknown"
 
-def placeholder_processing_function(job_id, object_key):
-    """Placeholder function for future processing logic"""
-    logger.info(f"Processing job {job_id} with file {object_key}")
-    # TODO: Add actual processing logic here
-    pass
+def process_w2_file(job_id, object_key):
+    """Process W2 file and extract data"""
+    logger.info(f"Processing W2 file for job {job_id} with file {object_key}")
+    
+    try:
+        # Extract W2 data from the file
+        w2_data = extract_w2_data(object_key)
+        
+        # Validate extracted data
+        validate_w2_data(w2_data)
+        
+        # Convert Decimal to string for JSON serialization
+        w2_data_serializable = {}
+        for key, value in w2_data.items():
+            if hasattr(value, 'quantize'):  # Check if it's a Decimal
+                w2_data_serializable[key] = str(value)
+            else:
+                w2_data_serializable[key] = value
+        
+        # Update job with extracted W2 data
+        update_payload = {
+            "w2_data": w2_data_serializable
+        }
+        
+        if not update_job(job_id, update_payload):
+            raise Exception("Failed to update job with W2 data")
+        
+        logger.info(f"✅ Successfully extracted and stored W2 data for job {job_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error processing W2 file for job {job_id}: {str(e)}")
+        raise e
 
-def update_job_status(job_id, updates):
+def update_job(job_id, updates):
     """Helper function to update job via API"""
     django_url = f"http://backend:8000/jobs/{job_id}/"
     response = requests.patch(django_url, json=updates)
@@ -64,14 +93,14 @@ def lambda_handler(event, context):
         logger.info(f"Processing job: {job_id}")
         
         # Phase 1: Mark file as uploaded
-        if not update_job_status(job_id, {"file_uploaded": True}):
+        if not update_job(job_id, {"file_uploaded": True}):
             return {"statusCode": 500, "body": "Failed to mark file as uploaded"}
         
-        # Phase 2: Call processing function
-        placeholder_processing_function(job_id, object_key)
+        # Phase 2: Process W2 file and extract data
+        process_w2_file(job_id, object_key)
         
         # Phase 3: Mark as completed
-        if not update_job_status(job_id, {"status": "Success"}):
+        if not update_job(job_id, {"status": "Success"}):
             return {"statusCode": 500, "body": "Failed to mark job as completed"}
         
         # Log success

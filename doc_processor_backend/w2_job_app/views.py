@@ -4,8 +4,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from .models import W2Job
-from .serializers import W2JobSerializer, CreateJobResponseSerializer
+from .models import W2Job, W2Data
+from .serializers import W2JobSerializer, CreateJobResponseSerializer, W2DataSerializer
 from shared_services.services.s3_service import S3Service
 
 class W2JobViewSet(viewsets.ModelViewSet):
@@ -75,17 +75,13 @@ class W2JobViewSet(viewsets.ModelViewSet):
         """Update job - PATCH /jobs/{job_id}/"""
         try:
             job = W2Job.objects.get(job_id=job_id)
+            serializer = self.get_serializer(job, data=request.data, partial=True)
             
-            # Update only the fields that are passed in the request
-            for field, value in request.data.items():
-                if hasattr(job, field):
-                    setattr(job, field, value)
-            
-            job.save()
-            
-            # Return updated job data
-            serializer = self.get_serializer(job)
-            return Response(serializer.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except W2Job.DoesNotExist:
             return Response(
                 {"error": "Job not found"}, 
