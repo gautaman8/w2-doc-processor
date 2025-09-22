@@ -19,40 +19,71 @@ lambda_client = boto3.client(
 def lambda_handler(event, context):
     """
     SQS Handler Lambda function
-    Processes S3 events from SQS queue and triggers core processor
+    Processes both S3 events and external events from SQS queue
     """
     logger.info(f"Received event: {json.dumps(event)}")
     
     try:
         # Process each record in the SQS event
         for record in event.get('Records', []):
-            # Parse S3 event from SQS message
-            s3_event = json.loads(record['body'])
+            message_body = json.loads(record['body'])
             
-            # Extract S3 event records
-            for s3_record in s3_event.get('Records', []):
-                bucket_name = s3_record['s3']['bucket']['name']
-                object_key = s3_record['s3']['object']['key']
-                event_name = s3_record['eventName']
-                
-                logger.info(f"Processing S3 event: {event_name} for {bucket_name}/{object_key}")
-                
-                # Create event for core processor
-                core_processor_event = {
-                    'bucket_name': bucket_name,
-                    'object_key': object_key,
-                    'event_name': event_name,
-                    'timestamp': s3_record['eventTime']
-                }
+            # Check if this is an S3 event (has eventSource: aws:s3)
+            if 'Records' in message_body and len(message_body['Records']) > 0:
+                first_record = message_body['Records'][0]
+                if first_record.get('eventSource') == 'aws:s3':
+                    # This is an S3 event - process as before
+                    logger.info("Processing S3 event from AWS")
+                    
+                    # Extract S3 event records
+                    for s3_record in message_body.get('Records', []):
+                        bucket_name = s3_record['s3']['bucket']['name']
+                        object_key = s3_record['s3']['object']['key']
+                        event_name = s3_record['eventName']
+                        
+                        logger.info(f"Processing S3 event: {event_name} for {bucket_name}/{object_key}")
+                        
+                        # Create event for core processor
+                        core_processor_event = {
+                            'event_type': 's3_upload',  # Add event_type for consistency
+                            'bucket_name': bucket_name,
+                            'object_key': object_key,
+                            'event_name': event_name,
+                            'timestamp': s3_record['eventTime']
+                        }
+                        
+                        # Invoke core processor Lambda asynchronously
+                        response = lambda_client.invoke(
+                            FunctionName='core-processor',
+                            InvocationType='Event',  # Asynchronous invocation
+                            Payload=json.dumps(core_processor_event)
+                        )
+                        
+                        logger.info(f"Triggered core processor for S3 event: {object_key}")
+                else:
+                    # This is an external event - pass it directly to core processor
+                    logger.info(f"Processing external event: {message_body.get('event_type')} for job {message_body.get('job_id')}")
+                    
+                    # Invoke core processor Lambda asynchronously
+                    response = lambda_client.invoke(
+                        FunctionName='core-processor',
+                        InvocationType='Event',  # Asynchronous invocation
+                        Payload=json.dumps(message_body)
+                    )
+                    
+                    logger.info(f"Triggered core processor for external event: {message_body.get('event_type')}")
+            else:
+                # This is a direct external event (no Records wrapper)
+                logger.info(f"Processing direct external event: {message_body.get('event_type')} for job {message_body.get('job_id')}")
                 
                 # Invoke core processor Lambda asynchronously
                 response = lambda_client.invoke(
                     FunctionName='core-processor',
                     InvocationType='Event',  # Asynchronous invocation
-                    Payload=json.dumps(core_processor_event)
+                    Payload=json.dumps(message_body)
                 )
                 
-                logger.info(f"Triggered core processor for {object_key}")
+                logger.info(f"Triggered core processor for direct external event: {message_body.get('event_type')}")
                 
         return {
             'statusCode': 200,

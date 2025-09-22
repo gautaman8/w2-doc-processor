@@ -6,6 +6,7 @@ import boto3
 from datetime import datetime
 from urllib.parse import unquote_plus
 from w2_extractor import extract_w2_data, validate_w2_data
+from external_api_client import call_external_upload_api, call_external_data_update_api
 
 # Configure logging
 logger = logging.getLogger()
@@ -118,10 +119,32 @@ def publish_external_events(job_id, object_key, w2_data):
 def lambda_handler(event, context):
     """
     Core Processor Lambda function
-    Processes individual file events and updates job status
+    Handles different event types: s3_upload, external_upload, external_data_update
     """
     logger.info(f"Received event: {json.dumps(event)}")
     
+    try:
+        event_type = event.get('event_type', 's3_upload')  # Default to s3_upload for backward compatibility
+        
+        if event_type == 's3_upload':
+            return handle_s3_upload(event)
+        elif event_type == 'external_upload':
+            return handle_external_upload(event)
+        elif event_type == 'external_data_update':
+            return handle_external_data_update(event)
+        else:
+            logger.warning(f"Unknown event type: {event_type}, defaulting to s3_upload")
+            return handle_s3_upload(event)
+        
+    except Exception as e:
+        logger.error(f"Error processing event: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f'Error: {str(e)}')
+        }
+
+def handle_s3_upload(event):
+    """Handle S3 upload events - original W2 processing logic"""
     try:
         # Extract event details
         bucket_name = event.get('bucket_name')
@@ -139,7 +162,7 @@ def lambda_handler(event, context):
                 'body': json.dumps('Invalid object key format')
             }
         
-        logger.info(f"Processing job: {job_id}")
+        logger.info(f"Processing S3 upload for job: {job_id}")
         
         # Phase 1: Mark file as uploaded
         if not update_job(job_id, {"file_uploaded": True}):
@@ -156,12 +179,12 @@ def lambda_handler(event, context):
             return {"statusCode": 500, "body": "Failed to mark job as completed"}
         
         # Log success
-        logger.info(f"✅ Successfully processed job {job_id}")
+        logger.info(f"✅ Successfully processed S3 upload for job {job_id}")
         
         return {
             'statusCode': 200,
             'body': json.dumps({
-                'message': 'Job processed successfully',
+                'message': 'S3 upload processed successfully',
                 'job_id': job_id,
                 'file_uploaded': True,
                 'status': 'Success'
@@ -169,7 +192,108 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
-        logger.error(f"Error processing file event: {str(e)}")
+        logger.error(f"Error processing S3 upload: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f'Error: {str(e)}')
+        }
+
+def handle_external_upload(event):
+    """Handle external upload events"""
+    try:
+        job_id = event.get('job_id')
+        s3_url = event.get('s3_url')
+        
+        if not job_id or not s3_url:
+            logger.error(f"Missing required fields in external_upload event: {event}")
+            return {
+                'statusCode': 400,
+                'body': json.dumps('Missing job_id or s3_url')
+            }
+        
+        logger.info(f"Processing external upload for job: {job_id}")
+        
+        # Call external upload API
+        api_result = call_external_upload_api(s3_url, job_id)
+        
+        if api_result['success']:
+            # Update database with success
+            if update_job(job_id, {"external_upload": True}):
+                logger.info(f"✅ Successfully processed external upload for job {job_id}")
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps({
+                        'message': 'External upload processed successfully',
+                        'job_id': job_id,
+                        'file_id': api_result.get('file_id')
+                    })
+                }
+            else:
+                logger.error(f"❌ Failed to update database for external upload job {job_id}")
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps('Failed to update database')
+                }
+        else:
+            logger.error(f"❌ External upload API failed for job {job_id}: {api_result.get('error')}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps(f"External API failed: {api_result.get('error')}")
+            }
+            
+    except Exception as e:
+        logger.error(f"Error processing external upload: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f'Error: {str(e)}')
+        }
+
+def handle_external_data_update(event):
+    """Handle external data update events"""
+    try:
+        job_id = event.get('job_id')
+        w2_data = event.get('w2_data')
+        
+        if not job_id or not w2_data:
+            logger.error(f"Missing required fields in external_data_update event: {event}")
+            return {
+                'statusCode': 400,
+                'body': json.dumps('Missing job_id or w2_data')
+            }
+        
+        logger.info(f"Processing external data update for job: {job_id}")
+        
+        # Call external data update API
+        api_result = call_external_data_update_api(w2_data, job_id)
+        
+        if api_result['success']:
+            # Update database with success
+            if update_job(job_id, {"external_data_update": True}):
+                logger.info(f"✅ Successfully processed external data update for job {job_id}")
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps({
+                        'message': 'External data update processed successfully',
+                        'job_id': job_id,
+                        'report_id': api_result.get('report_id'),
+                        'file_id': api_result.get('file_id')
+                    })
+                }
+            else:
+                logger.error(f"❌ Failed to update database for external data update job {job_id}")
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps('Failed to update database')
+                }
+        else:
+            logger.error(f"❌ External data update API failed for job {job_id}: {api_result.get('error')}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps(f"External API failed: {api_result.get('error')}")
+            }
+            
+    except Exception as e:
+        logger.error(f"Error processing external data update: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps(f'Error: {str(e)}')
