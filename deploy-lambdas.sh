@@ -101,7 +101,7 @@ find . -name "contrib" -type d -exec rm -rf {} + 2>/dev/null || true
 # Keep http2 directory as urllib3 needs it
 # find . -name "http2" -type d -exec rm -rf {} + 2>/dev/null || true
 find . -name "emscripten" -type d -exec rm -rf {} + 2>/dev/null || true
-zip -r ../core-processor.zip handler.py w2_extractor.py requests/ urllib3/ certifi/ charset_normalizer/ idna/ six.py
+zip -r ../core-processor.zip handler.py w2_extractor.py requests/ urllib3/ certifi/ charset_normalizer/ idna/ six.py PyPDF2/
 cd ..
 
 # Clean up temp directory
