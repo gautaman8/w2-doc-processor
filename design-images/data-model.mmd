@@ -1,0 +1,28 @@
+erDiagram
+    W2Job {
+        uuid id PK
+        string job_id UK
+        string filename
+        boolean file_uploaded
+        string status
+        string signed_url
+        boolean external_upload
+        boolean external_data_update
+        string w2_data_status
+        text w2_data_status_msg
+        datetime created_at
+        datetime updated_at
+    }
+    
+    W2Data {
+        uuid id PK
+        uuid w2_job_id FK
+        string ein
+        string ssn
+        decimal wages_box1
+        decimal federal_tax_withheld_box2
+        datetime created_at
+        datetime updated_at
+    }
+    
+    W2Job ||--o| W2Data : "has one"

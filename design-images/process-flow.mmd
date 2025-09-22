@@ -1,0 +1,78 @@
+sequenceDiagram
+    participant U as User
+    participant F as Frontend<br/>(Streamlit)
+    participant B as Backend<br/>(Django API)
+    participant S3 as S3 Bucket<br/>(LocalStack)
+    participant SQS as SQS Queue<br/>(LocalStack)
+    participant SH as SQS Handler<br/>(Lambda)
+    participant CP as Core Processor<br/>(Lambda)
+    participant SM as Secrets Manager<br/>(LocalStack)
+    participant API as External API<br/>(Mocked)
+
+    Note over U,API: W2 Document Processing Flow
+
+    %% Step 1: Job Creation
+    U->>F: Upload W2 PDF
+    F->>B: POST /jobs/ {"filename": "w2.pdf"}
+    B->>S3: Generate signed URL
+    S3-->>B: Return signed URL
+    B-->>F: Return job_id + signed_url
+    F-->>U: Show upload interface
+
+    %% Step 2: File Upload
+    U->>S3: Upload PDF to signed URL
+    Note over S3: File stored in<br/>uploads/{job_id}/w2.pdf
+
+    %% Step 3: S3 Event Trigger
+    S3->>SQS: S3 ObjectCreated event
+    Note over SQS: Event queued:<br/>{"eventSource": "aws:s3", ...}
+
+    %% Step 4: SQS Processing
+    SQS->>SH: Trigger SQS Handler Lambda
+    SH->>SH: Parse S3 event
+    SH->>CP: Invoke Core Processor<br/>{"event_type": "s3_upload", ...}
+
+    %% Step 5: Core Processing - S3 Upload
+    CP->>B: PATCH /jobs/{job_id}/<br/>{"file_uploaded": true}
+    B-->>CP: Success response
+
+    CP->>CP: Extract W2 data from PDF
+    Note over CP: PyPDF2 processing<br/>Extract EIN, SSN, wages, tax
+
+    CP->>B: PATCH /jobs/{job_id}/<br/>{"w2_data": {...}}
+    B-->>CP: Success response
+
+    %% Step 6: Publish External Events
+    CP->>SQS: Send external_upload event
+    CP->>SQS: Send external_data_update event
+    Note over SQS: Two events queued for<br/>parallel processing
+
+    %% Step 7: Process External Upload Event
+    SQS->>SH: Trigger for external_upload
+    SH->>CP: Invoke Core Processor<br/>{"event_type": "external_upload", ...}
+    CP->>SM: Get API key
+    SM-->>CP: Return API key
+    CP->>API: POST /external/file-upload<br/>{"s3_url": "...", "job_id": "..."}
+    API-->>CP: Return 201 + file_id
+    CP->>B: PATCH /jobs/{job_id}/<br/>{"external_upload": true}
+
+    %% Step 8: Process External Data Update Event
+    SQS->>SH: Trigger for external_data_update
+    SH->>CP: Invoke Core Processor<br/>{"event_type": "external_data_update", ...}
+    CP->>SM: Get API key
+    SM-->>CP: Return API key
+    CP->>API: POST /external/data-update<br/>{"w2_data": {...}, "job_id": "..."}
+    API-->>CP: Return 201 + report_id
+    CP->>B: PATCH /jobs/{job_id}/<br/>{"external_data_update": true}
+
+    %% Step 9: Final Status Update
+    CP->>B: PATCH /jobs/{job_id}/<br/>{"status": "Success", "w2_data_status": "success"}
+    B-->>CP: Success response
+
+    %% Step 10: User Check Status
+    U->>F: Check job status
+    F->>B: GET /jobs/{job_id}/
+    B-->>F: Return job details + W2 data
+    F-->>U: Show completed status + extracted data
+
+    Note over U,API: Processing Complete ✅
