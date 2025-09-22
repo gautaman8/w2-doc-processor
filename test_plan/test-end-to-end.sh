@@ -21,7 +21,7 @@ curl -s http://localhost:8501/ | head -5
 
 # Test 2: S3 → SQS → Lambda Flow
 echo "🔄 Step 2: Testing S3 → SQS → Lambda flow..."
-echo "Sample W2 document for testing" > test-w2-document.pdf
+# echo "Sample W2 document for testing" > test-w2-document.pdf
 aws --endpoint-url=http://localhost:4566 s3 cp test-w2-document.pdf s3://w2-bucket/uploads/test-job-$(date +%s)/w2.pdf
 sleep 3
 

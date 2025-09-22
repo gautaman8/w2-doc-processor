@@ -35,6 +35,30 @@ doc-processor/
 
 ### Quick Start (Recommended)
 
+**One-command setup with retry logic:**
+```bash
+./quick-start.sh
+```
+
+This script will:
+1. Start all Docker services
+2. Wait for LocalStack to initialize
+3. Create SQS queue and S3 bucket
+4. Configure S3 event notifications
+5. Initialize AWS Secrets Manager with API key
+6. Deploy Lambda functions
+7. Configure SQS-Lambda triggers
+8. Verify all services are ready
+
+**Access the application:**
+- 🌐 Frontend: http://localhost:8501
+- 🔧 Backend: http://localhost:8000
+- ☁️ LocalStack: http://localhost:4566
+
+### Manual Setup (Step-by-step)
+
+Or Run scripts manually below
+
 1. **Start all services:**
    ```bash
    docker-compose up -d
@@ -54,42 +78,14 @@ doc-processor/
    
    # Configure SQS-Lambda trigger
    ./configure-sqs-lambda.sh
+
+   # Initialize AWS Secrets Manager with API key
+   ./init-secrets.sh
    ```
 
 3. **Verify setup:**
    ```bash
    ./test_plan/test-end-to-end.sh
-   ```
-
-### Manual Setup (Alternative)
-
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Start LocalStack:**
-   ```bash
-   docker-compose up localstack -d
-   ```
-
-3. **Setup Django database:**
-   ```bash
-   cd doc_processor_backend
-   python manage.py migrate
-   ```
-
-4. **Run Django backend:**
-   ```bash
-   export PYTHONPATH="/Users/gautamansarangan/doc-processor:$PYTHONPATH"
-   cd doc_processor_backend
-   python manage.py runserver 8000
-   ```
-
-5. **Run Streamlit frontend:**
-   ```bash
-   cd frontend
-   streamlit run app.py
    ```
 
 ## API Endpoints
