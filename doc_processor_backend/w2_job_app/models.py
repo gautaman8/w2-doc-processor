@@ -12,6 +12,15 @@ class W2Job(models.Model):
     signed_url = models.URLField(max_length=500, null=True, blank=True)
     external_upload = models.BooleanField(default=False)
     external_data_update = models.BooleanField(default=False)
+    
+    # W2 Data processing status (simplified: success/failure only)
+    w2_data_status = models.CharField(max_length=20, default='pending', choices=[
+        ('pending', 'Pending'),
+        ('success', 'Success'),
+        ('failed', 'Failed')
+    ])
+    w2_data_status_msg = models.TextField(null=True, blank=True)
+    
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     

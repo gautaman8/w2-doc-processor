@@ -46,13 +46,8 @@ def extract_w2_data(object_key):
             
     except Exception as e:
         logger.error(f"Error extracting W2 data from {object_key}: {str(e)}")
-        # Return placeholder data as fallback
-        return {
-            "ein": "12-3456789",
-            "ssn": "123-45-6789", 
-            "wages_box1": Decimal("50000.00"),
-            "federal_tax_withheld_box2": Decimal("5000.00")
-        }
+        # Re-raise exception to trigger SQS retry mechanism
+        raise e
 
 def extract_w2_data_from_pdf(pdf_path: str) -> dict:
     """Extract W-2 data from PDF using AcroForm fields or text parsing"""

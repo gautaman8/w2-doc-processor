@@ -15,6 +15,24 @@ logger.setLevel(logging.INFO)
 # Initialize SQS client
 sqs = boto3.client('sqs', endpoint_url='http://localstack:4566', region_name='us-east-1')
 
+def update_w2_data_status(job_id, status, message=None):
+    """Update W2 data processing status (simplified: success/failure only)"""
+    try:
+        update_payload = {
+            "w2_data_status": status,
+            "w2_data_status_msg": message
+        }
+        
+        if update_job(job_id, update_payload):
+            logger.info(f"Updated W2 data status for job {job_id}: {status} - {message}")
+            return True
+        else:
+            logger.error(f"Failed to update W2 data status for job {job_id}")
+            return False
+    except Exception as e:
+        logger.error(f"Error updating W2 data status for job {job_id}: {str(e)}")
+        return False
+
 def extract_job_id(object_key):
     """Extract job_id from S3 object key"""
     # "uploads/job_id/w2.pdf" -> "job_id"
@@ -53,11 +71,20 @@ def process_w2_file(job_id, object_key):
         if not update_job(job_id, update_payload):
             raise Exception("Failed to update job with W2 data")
         
+        # Update status to success
+        update_w2_data_status(job_id, 'success', 'W2 data extracted successfully')
+        
         logger.info(f"✅ Successfully extracted and stored W2 data for job {job_id}")
         return w2_data_serializable
         
     except Exception as e:
-        logger.error(f"❌ Error processing W2 file for job {job_id}: {str(e)}")
+        error_msg = f"W2 extraction failed: {str(e)}"
+        logger.error(f"❌ Error processing W2 file for job {job_id}: {error_msg}")
+        
+        # Update status to failed
+        update_w2_data_status(job_id, 'failed', error_msg)
+        
+        # Re-raise exception to trigger SQS retry
         raise e
 
 def update_job(job_id, updates):
@@ -219,6 +246,7 @@ def handle_external_upload(event):
         if api_result['success']:
             # Update database with success
             if update_job(job_id, {"external_upload": True}):
+                update_w2_data_status(job_id, 'success', 'External upload completed successfully')
                 logger.info(f"✅ Successfully processed external upload for job {job_id}")
                 return {
                     'statusCode': 200,
@@ -229,12 +257,16 @@ def handle_external_upload(event):
                     })
                 }
             else:
+                error_msg = "Failed to update database after external upload"
+                update_w2_data_status(job_id, 'failed', error_msg)
                 logger.error(f"❌ Failed to update database for external upload job {job_id}")
                 return {
                     'statusCode': 500,
                     'body': json.dumps('Failed to update database')
                 }
         else:
+            error_msg = f"External upload API failed: {api_result.get('error')}"
+            update_w2_data_status(job_id, 'failed', error_msg)
             logger.error(f"❌ External upload API failed for job {job_id}: {api_result.get('error')}")
             return {
                 'statusCode': 500,
@@ -269,6 +301,7 @@ def handle_external_data_update(event):
         if api_result['success']:
             # Update database with success
             if update_job(job_id, {"external_data_update": True}):
+                update_w2_data_status(job_id, 'success', 'External data update completed successfully')
                 logger.info(f"✅ Successfully processed external data update for job {job_id}")
                 return {
                     'statusCode': 200,
@@ -280,12 +313,16 @@ def handle_external_data_update(event):
                     })
                 }
             else:
+                error_msg = "Failed to update database after external data update"
+                update_w2_data_status(job_id, 'failed', error_msg)
                 logger.error(f"❌ Failed to update database for external data update job {job_id}")
                 return {
                     'statusCode': 500,
                     'body': json.dumps('Failed to update database')
                 }
         else:
+            error_msg = f"External data update API failed: {api_result.get('error')}"
+            update_w2_data_status(job_id, 'failed', error_msg)
             logger.error(f"❌ External data update API failed for job {job_id}: {api_result.get('error')}")
             return {
                 'statusCode': 500,

@@ -14,7 +14,8 @@ class W2JobSerializer(serializers.ModelSerializer):
         model = W2Job
         fields = [
             'id', 'job_id', 'filename', 'file_uploaded', 'status', 'signed_url', 
-            'external_upload', 'external_data_update', 'w2_data', 'created_at', 'updated_at'
+            'external_upload', 'external_data_update', 'w2_data_status', 'w2_data_status_msg',
+            'w2_data', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'job_id', 'created_at', 'updated_at']
     
