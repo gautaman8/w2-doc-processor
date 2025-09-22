@@ -38,6 +38,35 @@ services:
         echo 'Creating SQS queue...' &&
         aws --endpoint-url=http://localstack:4566 sqs create-queue --queue-name w2-file-events-queue &&
         echo 'SQS queue created successfully' &&
+        echo 'Creating S3 bucket...' &&
+        aws --endpoint-url=http://localstack:4566 s3 mb s3://w2-bucket &&
+        echo 'Configuring S3 bucket events...' &&
+        QUEUE_URL=\$$(aws --endpoint-url=http://localstack:4566 sqs get-queue-url --queue-name w2-file-events-queue --query 'QueueUrl' --output text) &&
+        echo 'Queue URL: \$$QUEUE_URL' &&
+        QUEUE_ARN=\$$(aws --endpoint-url=http://localstack:4566 sqs get-queue-attributes --queue-url \$$QUEUE_URL --attribute-names QueueArn --query 'Attributes.QueueArn' --output text) &&
+        echo 'Queue ARN: \$$QUEUE_ARN' &&
+        aws --endpoint-url=http://localstack:4566 s3api put-bucket-notification-configuration \
+          --bucket w2-bucket \
+          --notification-configuration '{
+            \"QueueConfigurations\": [
+              {
+                \"Id\": \"w2-file-events\",
+                \"QueueArn\": \"'$$QUEUE_ARN'\",
+                \"Events\": [\"s3:ObjectCreated:*\"],
+                \"Filter\": {
+                  \"Key\": {
+                    \"FilterRules\": [
+                      {
+                        \"Name\": \"prefix\",
+                        \"Value\": \"uploads/\"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }' &&
+        echo 'S3 events configured' &&
         tail -f /dev/null
       "
     networks:

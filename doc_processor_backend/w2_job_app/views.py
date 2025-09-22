@@ -70,3 +70,29 @@ class W2JobViewSet(viewsets.ModelViewSet):
         s3_service = S3Service()
         bucket_info = s3_service.get_bucket_info()
         return Response(bucket_info)
+
+    def partial_update(self, request, job_id=None):
+        """Update job - PATCH /jobs/{job_id}/"""
+        try:
+            job = W2Job.objects.get(job_id=job_id)
+            
+            # Update only the fields that are passed in the request
+            for field, value in request.data.items():
+                if hasattr(job, field):
+                    setattr(job, field, value)
+            
+            job.save()
+            
+            # Return updated job data
+            serializer = self.get_serializer(job)
+            return Response(serializer.data)
+        except W2Job.DoesNotExist:
+            return Response(
+                {"error": "Job not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to update job: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

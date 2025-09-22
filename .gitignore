@@ -4,3 +4,5 @@
 __pycache__/
 /sample_files/
 .DS_Store
+*.zip
+core-test-response.json
